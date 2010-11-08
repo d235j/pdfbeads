@@ -123,7 +123,7 @@ class PDFBeads::PageDataProvider < Array
         end
       end
 
-      if @fg_layer.nil? and @stencils.count == 1
+      if @fg_layer.nil? and @stencils.length == 1
         fgpath = Dir.entries('.').detect do |f|
           /\A#{@basename}.(fg).(#{exts_pattern})\Z/i.match(f)
         end
@@ -204,7 +204,7 @@ class PDFBeads::PageDataProvider < Array
             end
             cmap = Hash[
               :path => cpath,
-              :rgb  => [px.red.to_f/0xFFFF, px.green.to_f/0xFFFF, px.blue.to_f/0xFFFF]
+              :rgb  => [px.red.to_f/QuantumRange, px.green.to_f/QuantumRange, px.blue.to_f/QuantumRange]
             ]
             @stencils << cmap
             ret += 1
@@ -237,7 +237,15 @@ class PDFBeads::PageDataProvider < Array
         PageData.fixResolution( img )
         resampled = img.resample(@pageargs[:bg_resolution]); img.destroy!; img = resampled
 
-        if bgf.eql? 'JP2' and not Magick.formats.has_key? 'JP2'
+        # A hack for some Windows versions of RMagick, which throw an error the
+        # first time when Magick.formats is accessed
+        begin
+          retries = 2
+          mfmts = Magick.formats
+        rescue
+          retry if (retries -= 1 ) > 0
+        end
+        if bgf.eql? 'JP2' and not mfmts.has_key? 'JP2'
           $stderr.puts( "This version of ImageMagick doesn't support JPEG2000 compression." )
           $stderr.puts( "\tI'll use JPEG compression instead." )
           bgf = 'JPG'
@@ -369,7 +377,15 @@ class PDFBeads::PageDataProvider < Array
       @pref = Array.new( ext_lossless )
     end
 
-    unless Magick.formats.has_key? 'JP2'
+    # A hack for some Windows versions of RMagick, which throw an error the
+    # first time when Magick.formats is accessed
+    begin
+      retries = 2
+      mfmts = Magick.formats
+    rescue
+      retry if (retries -= 1 ) > 0
+    end
+    unless mfmts.has_key? 'JP2'
       @exts.delete_if{ |ext| ext_jpeg2000.include? ext }
       @pref = Array.new( ext_jpeg ) if @pref.include? 'JP2'
     end

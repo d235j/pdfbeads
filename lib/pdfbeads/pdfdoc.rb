@@ -41,7 +41,7 @@ class PDFBeads::PDFBuilder::Dict < Hash
     s = "<<\n"
     each_pair{ |key, value| s << "/#{key} #{value}\n" }
     s << ">>\n"
-    return s
+    s
   end
 end
 
@@ -78,11 +78,11 @@ class PDFBeads::PDFBuilder::XObj
   end
 
   def hasInDict(key)
-    return @d.has_key? key
+    @d.has_key? key
   end
 
   def getFromDict(key)
-    return @d[key]
+    @d[key]
   end
 
   def removeFromDict(key)
@@ -90,11 +90,11 @@ class PDFBeads::PDFBuilder::XObj
   end
 
   def getID
-    return @id
+    @id
   end
 
   def dictLength
-    return @d.length
+    @d.length
   end
 end
 
@@ -106,12 +106,12 @@ class PDFBeads::PDFBuilder::Doc
 
   def addObject(o)
     @objs.push(o)
-    return o
+    o
   end
 
   def addPage(p)
     @pages.push(p)
-    return addObject(p)
+    addObject(p)
   end
 
   def to_s()
@@ -144,6 +144,6 @@ class PDFBeads::PDFBuilder::Doc
     a << "#{xrefstart.to_s}\n"
     a << "%%EOF"
 
-    return a
+    a
   end
 end
