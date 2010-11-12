@@ -69,7 +69,7 @@ class PDFBeads::PDFBuilder::PDFLabels < Array
       fields = descr.split(/:/, 2)
       if /\d+/.match( fields[0] )
         rng[:first] = fields[0].to_i
-        if fields.length > 1 and /([^%.]*)%?(\d*)([DRrAa]?)/.match(fields[1])
+        if fields.length > 1 and /([^%]*)%?(\d*)([DRrAa]?)/.match(fields[1])
           rng[:prefix]  = $1 unless $1 == ''
           rng[:start ]  = $2.to_i unless $2 == ''
           rng[:style ]  = $3 unless $3 == ''

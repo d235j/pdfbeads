@@ -582,10 +582,10 @@ class PDFBeads::PDFBuilder
 
   def loadJBIG2Page( path,dictpath,ocref )
     begin
-      jbig2  = File.open( path,'r' ).read
+      jbig2  = File.open( path,'rb' ).read
       width, height, xres, yres = jbig2[11...27].unpack( 'NNNN' )
       unless @dictpath.eql? dictpath
-        symd_f = File.open( dictpath,'r' ).read
+        symd_f = File.open( dictpath,'rb' ).read
         symd_o = @doc.addObject( XObj.new(Hash.new(),symd_f) )
         @dictpath = dictpath
         @dictobj  = symd_o

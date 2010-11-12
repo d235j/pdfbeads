@@ -409,8 +409,17 @@ class PDFBeads::PageDataProvider < Array
     force = @pageargs[:force_update]
 
     has_jbig2 = false
-    ENV['PATH'].split(':').each do |dir|
-      if File.exists?( dir << '/jbig2' )
+    if /(win|w)32$/i.match( RUBY_PLATFORM )
+      schar = ';'
+      ext = '.exe'
+      sep = '\\'
+    else
+      schar = ':'
+      ext = ''
+      sep = '/'
+    end
+    ENV['PATH'].split( schar ).each do |dir|
+      if File.exists?( dir << sep << 'jbig2' << ext )
         has_jbig2 = true
         break
       end

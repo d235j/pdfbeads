@@ -1,3 +1,7 @@
 2010 November 7 (Alexey Kryukov) Version 1.0.0
 
     * Initial release
+
+2010 November 12 (Alexey Kryukov) Version 1.0.1
+
+    * JBIG2 support didn't work properly under MS Windows.
