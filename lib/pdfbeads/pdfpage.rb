@@ -70,27 +70,34 @@ class PDFBeads::PageDataProvider < Array
       else
         @x_res = @y_res = fres
       end
+
       if insp.depth == 1
         @stencils << map
         $stderr.puts( "Prepared data for processing #{@name}\n" )
-        return 1
+        ret = 1
+
+      else
+        img = ImageList.new( @name )
+        # ImageMagick incorrectly identifies indexed PNG images as DirectClass.
+        # It also assigns a strange color value to fully opaque areas. So
+        # we have to use an independent approach to recognize indexed images.
+        unless insp.palette.nil?
+          img.class_type = PseudoClass
+          ret = processIndexed( img,@pageargs[:maxcolors],force )
+        end
+        ret = processMixed( img,force,map ) if ret == 0
+        img.destroy!
+
+        # Make sure there are no more RMagick objects
+        GC.start
       end
 
-      img = ImageList.new( @name )
-      # ImageMagick incorrectly identifies indexed PNG images as DirectClass.
-      # It also assigns a strange color value to fully opaque areas. So
-      # we have to use an independent approach to recognize indexed images.
-      unless insp.palette.nil?
-        img.class_type = PseudoClass
-        ret = processIndexed( img,@pageargs[:maxcolors],force )
-      end
-      ret = processMixed( img,force,map ) if ret == 0
-      img.destroy!
-
-      # Make sure there are no more RMagick objects
-      GC.start
       $stderr.puts( "Prepared data for processing #{@name}\n" )
-      return ret
+      if insp.nextImage
+        $stderr.puts( "Warning: #{@name} contains multiple images, but only the first one") 
+        $stderr.puts( "\tis going to be used\n" )
+      end
+      ret
     end
 
     def addSupplementaryFiles()

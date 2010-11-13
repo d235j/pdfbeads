@@ -108,13 +108,13 @@ OptionParser.new() do |opts|
                 "Generate one shared JBIG2 dictionary per NUM pages.",
                 "This option is only applied when JBIG2 compression",
                 "is used. Default value is #{pageargs[:pages_per_dict]}") do |p|
-    pageargs[:pages_per_dict] = p
+    pageargs[:pages_per_dict] = p.to_i
   end
   opts.on("-r", "--force-resolution DPI",
                 "Set resolution for foreground mask images to the",
                 "specified value (in pixels per inch). Note that the",
                 "image is not actually resampled.") do |r|
-    pageargs[:st_resolution] = r
+    pageargs[:st_resolution] = r.to_f
   end
   opts.on("-x", "--max-colors NUM",
                 "If pdfbeads finds an indexed file with NUM or",
@@ -123,7 +123,7 @@ OptionParser.new() do |opts|
                 "PDF page mask. Otherwise the file is treated just",
                 "like a normal greyscale or color image. Default",
                 "value is #{pageargs[:maxcolors]}") do |num|
-    pageargs[:maxcolors] = num
+    pageargs[:maxcolors] = num.to_i
   end
 
   opts.separator "\n"

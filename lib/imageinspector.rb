@@ -118,6 +118,22 @@ class ImageInspector::Image
     end
   end
 
+  def nextImage()
+    if @format.eql? :TIFF and @next_off > 0
+      begin
+        if @input.kind_of? IO or @input.kind_of? StringIO
+          tiffNext( @input )
+        else
+          File.open( @input, 'rb' ) { |io| tiffNext( io ) }
+        end
+        return true
+      rescue Exception => e
+        $stderr.puts( "Could not read data from #{@fname}: " << e.message )
+      end
+    end
+    false
+  end
+
   private
 
   def clearData
@@ -221,6 +237,11 @@ class ImageInspector::Image
     return ret
   end
 
+  def tiffNext( io )
+    sign = io.read( 4 )
+    tiffExamine( io,sign,@next_off )
+  end
+
   def tiffParseIFD( io,offset,intgr )
     packspec = [
       nil,              # nothing (shouldn't happen)
@@ -229,7 +250,7 @@ class ImageInspector::Image
       intgr,            # SHORT (16-bit unsigned integer)
       intgr.upcase,     # LONG (32-bit unsigned integer)
       intgr.upcase * 2, # RATIONAL (numerator + denominator)
-      intgr.upcase,     # SBYTE (8-bit signed integer)
+      'c',              # SBYTE (8-bit signed integer)
       'A*',             # undefined, but used for EXIF version
       intgr,            # SSHORT (16-bit signed integer)
       intgr.upcase,     # SLONG (32-bit signed integer)
@@ -271,7 +292,7 @@ class ImageInspector::Image
       @tags.has_key? 0x0100 and @tags.has_key? 0x0101 and 
       @tags.has_key? 0x0106 and @tags.has_key? 0x0111 and @tags.has_key? 0x0117 )
 
-    unless @tags.has_key? 0x8769
+    unless @format.eql? :JPEG
       @width = @tags[0x0100][0]; @height = @tags[0x0101][0]
 
       @tags[0x0111].each_index do |i|
@@ -334,8 +355,8 @@ class ImageInspector::Image
       buf.push( b )
       tag = buf[4..7].pack('c*')
 
-      # Currently we can detect only width/height for JP2 images.
-      # That's OK, as other parameters aren't needed for PDF generation.
+      # Currently no support for resolution, as I have never seen JP2 images
+      # with 'res '/'resc'/'resd' boxes, and not sure if they are ever used.
       if ['ftyp','jp2h','ihdr','colr','res ','resc',
           'resd','prfl','bpcc','pclr','cdef','jp2i'].include? tag
         length = buf[0..4].pack( 'c*' ).unpack( 'N' )[0]
