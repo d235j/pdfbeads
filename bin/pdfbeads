@@ -45,6 +45,7 @@ pdfargs  = Hash[
   :meta           => nil
 ]
 pageargs = Hash[
+  :threshold       => 1,
   :maxcolors       => 4,
   :st_resolution   => 0,
   :bg_resolution   => 300,
@@ -108,13 +109,22 @@ OptionParser.new() do |opts|
                 "Generate one shared JBIG2 dictionary per NUM pages.",
                 "This option is only applied when JBIG2 compression",
                 "is used. Default value is #{pageargs[:pages_per_dict]}") do |p|
-    pageargs[:pages_per_dict] = p.to_i
+    pval = p.to_i
+    pageargs[:pages_per_dict] = pval if ( pval >= 0 )
   end
   opts.on("-r", "--force-resolution DPI",
                 "Set resolution for foreground mask images to the",
                 "specified value (in pixels per inch). Note that the",
-                "image is not actually resampled.") do |r|
-    pageargs[:st_resolution] = r.to_f
+                "image is not actually resampled.") do |dpi|
+    pageargs[:st_resolution] = dpi.to_f
+  end
+  opts.on("-t", "--threshold VAL",
+                "Set binarization threshold for mixed images. Valid",
+                "values are between 1 and 255. 1 is used by default,",
+                "as the input files are assumed to be preprocessed",
+                "with ScanTailor (http://scantailor.sourceforge.net)") do |t|
+    tval = t.to_i
+    pageargs[:threshold] = tval if ( (1..255).include? tval )
   end
   opts.on("-x", "--max-colors NUM",
                 "If pdfbeads finds an indexed file with NUM or",
@@ -123,7 +133,8 @@ OptionParser.new() do |opts|
                 "PDF page mask. Otherwise the file is treated just",
                 "like a normal greyscale or color image. Default",
                 "value is #{pageargs[:maxcolors]}") do |num|
-    pageargs[:maxcolors] = num.to_i
+    cval = num.to_i
+    pageargs[:maxcolors] = cval if ( (2..255).include? cval )
   end
 
   opts.separator "\n"

@@ -5,3 +5,16 @@
 2010 November 12 (Alexey Kryukov) Version 1.0.1
 
     * JBIG2 support didn't work properly under MS Windows.
+
+2010 November 15 (Alexey Kryukov) Version 1.0.3
+
+    + Make it possible to specify binarization threshold for mixed scans
+      (it is still not recommended to perform segmentation with pdfbeads,
+      unless the image has been previously processed with ScanTailor, so
+      the normal value for this parameter is 1).
+
+    * If a multipage TIFF file is passed to pdfbeads, warn user that
+      only the first image will be processed.
+
+    * TIFF files with an embedded EXIF block were incorrectly processed
+      by ImageInspector.

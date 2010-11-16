@@ -55,6 +55,7 @@ class PDFBeads::PageDataProvider < Array
       ret   = 0
       force = @pageargs[:force_update]
       fres  = @pageargs[:st_resolution]
+      treshold = @pageargs[:threshold]
 
       map = Hash[
         :path => @name,
@@ -73,7 +74,6 @@ class PDFBeads::PageDataProvider < Array
 
       if insp.depth == 1
         @stencils << map
-        $stderr.puts( "Prepared data for processing #{@name}\n" )
         ret = 1
 
       else
@@ -85,7 +85,7 @@ class PDFBeads::PageDataProvider < Array
           img.class_type = PseudoClass
           ret = processIndexed( img,@pageargs[:maxcolors],force )
         end
-        ret = processMixed( img,force,map ) if ret == 0
+        ret = processMixed( img,treshold,force,map ) if ret == 0
         img.destroy!
 
         # Make sure there are no more RMagick objects
@@ -221,10 +221,10 @@ class PDFBeads::PageDataProvider < Array
       return ret
     end
 
-    def processMixed( img,force,map )
+    def processMixed( img,treshold,force,map )
       binpath = "#{@basename}.black.tiff"
       if not File.exists? binpath or force
-        im_copy = img.copy; bitonal = im_copy.threshold(1); im_copy.destroy!
+        im_copy = img.copy; bitonal = im_copy.threshold(QuantumRange/255*treshold); im_copy.destroy!
         bitonal.write( binpath ){
           self.format = 'TIFF'
           self.define( 'TIFF','rows-per-strip',img.rows )
@@ -237,6 +237,9 @@ class PDFBeads::PageDataProvider < Array
       bgpath = "#{@basename}.bg." << bgf.downcase
 
       if not File.exists? bgpath or force
+        if treshold > 1
+          bk = img.black_threshold(QuantumRange/255*treshold); img.destroy!; img = bk
+        end
         op = img.opaque( 'black','white' ); img.destroy!; img = op;
         if @pageargs[:force_grayscale]
           img.image_type = GrayscaleType

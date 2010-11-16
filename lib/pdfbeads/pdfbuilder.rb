@@ -281,7 +281,7 @@ class PDFBeads::PDFBuilder
       pages.addToDict( 'Count', page_objs.length )
       pages.addToDict( 'Kids', '[' << page_objs.map{|x| ref(x.getID).to_s}.join(' ') << ']' )
 
-      pkey = pidx + 1
+      pkey = (pidx + 1).to_s
       pkey = labels.getPageLabel( cur_range_id,pidx ) if labels != nil and labels.length > 0
       pages_by_num[pkey] = page.getID
       pidx += 1
@@ -547,10 +547,11 @@ class PDFBeads::PDFBuilder
     return nil if stencil.width.nil?
 
     width = stencil.width
-    height = stencil.height
+    height = rows_per_strip = stencil.height
     xres = stencil.x_dpi
     yres = stencil.y_dpi
-    rows_per_strip = stencil.tags[0x116][0]
+    rows_per_strip = stencil.tags[0x116][0] if
+      stencil.format.eql? :TIFF and stencil.tags.has_key? 0x116
 
     unless stencil.compression.eql? :CCITTFaxDecode and rows_per_strip >= height
       img = ImageList.new( path )
