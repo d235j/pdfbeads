@@ -6,7 +6,7 @@
 # Unlike other PDF creation tools, this utility attempts to implement
 # the approach typically used for DjVu books. Its key feature is
 # separating scanned text (typically black, but indexed images with
-# a small number of colors are also accepted) from halftone images 
+# a small number of colors are also accepted) from halftone images
 # placed into a background layer.
 #
 # Copyright (C) 2010 Alexey Kryukov (amkryukov@gmail.com).
@@ -30,7 +30,7 @@
 
 spec = Gem::Specification.new do |s|
   s.name = 'pdfbeads'
-  s.version = '1.0.3'
+  s.version = '1.0.5'
   s.summary = "PDFBeads -- convert scanned images to a single PDF file."
   s.description = <<-EOF
     PDFBeads is a small utility written in Ruby which takes scanned

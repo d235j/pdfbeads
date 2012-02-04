@@ -145,10 +145,25 @@ class PDFBeads::PDFBuilder
     if labels != nil and labels.length > 0
       nTree = "<</Nums[\n"
       labels.each do |rng|
-        ltitl = Iconv.iconv( "utf-16be", "utf-8", rng[:prefix] ).first.to_text
-
         nTree << "#{rng[:first]} << "
-        nTree << "/P (\xFE\xFF#{ltitl.to_text}) " if rng.has_key? :prefix
+        if rng.has_key? :prefix
+          begin
+            # If possible, use iso8859-1 (aka PDFDocEncoding) for page labels:
+            # it is at least guaranteed to be safe
+            ltitl = Iconv.iconv( "iso8859-1", "utf-8", rng[:prefix] ).first
+            nTree << "/P (#{ltitl.to_text}) " 
+          rescue Iconv::InvalidCharacter, Iconv::IllegalSequence
+            ltitl = Iconv.iconv( "utf-16be", "utf-8", rng[:prefix] ).first
+            # If there is no number (just prefix) then put a zero character after the prefix:
+            # this makes acroread happy, but prevents displaying the number in evince
+            unless rng.has_key? :style
+              nTree << "/P (\xFE\xFF#{ltitl.to_text}\x00\x00) "
+            # Otherwise put a formally correct Unicode string, which, however, may stumble acroread
+            else
+              nTree << "/P (\xFE\xFF#{ltitl.to_text}) "
+            end
+          end
+        end
         nTree << "/S /#{rng[:style]} " if rng.has_key? :style
         nTree << "/St #{rng[:start]}" if rng.has_key? :start
         nTree << ">>\n"
@@ -342,7 +357,7 @@ class PDFBeads::PDFBuilder
       fin.each do |fl|
         next if /^\#/.match( fl )
 
-        if /^\/?([A-Za-z]+)[ \t]*:[ \t]+\"(.*)\"/.match( fl )
+        if /^\/?([A-Za-z]+)[         ]*:[         ]+\"(.*)\"/.match( fl )
           key = $1
           if keys.include? key
             begin

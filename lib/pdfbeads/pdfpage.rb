@@ -259,6 +259,7 @@ class PDFBeads::PageDataProvider < Array
           $stderr.puts( "This version of ImageMagick doesn't support JPEG2000 compression." )
           $stderr.puts( "\tI'll use JPEG compression instead." )
           bgf = 'JPG'
+          bgpath = "#{@basename}.bg." << bgf.downcase
         end
 
         writeImage( img,bgpath,bgf )
