@@ -18,3 +18,11 @@
 
     * TIFF files with an embedded EXIF block were incorrectly processed
       by ImageInspector.
+
+2012 February 4 (Alexey Kryukov) Version 1.0.5
+
+    * If JPEG2000 compression was requested but not available,
+      JPEG files were still written with the 'JP2' extension.
+
+    * Some tweaks to minimize the effect of page labels being inconsistently handled
+      in various PDF viewers (prefer ISO-8859-1 strings if possible).
