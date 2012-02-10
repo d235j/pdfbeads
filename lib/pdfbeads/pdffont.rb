@@ -266,7 +266,75 @@ class PDFBeads::PDFBuilder::FontDataProvider
       0x02DB => ["/ogonek", 333],
       0x02DC => ["/tilde", 333],
       0x02DD => ["/hungarumlaut", 333],
+      0x0338 => ["/Alphatonos", 722],
+      0x0388 => ["/Epsilontonos", 694],
+      0x0389 => ["/Etatonos", 808],
+      0x038A => ["/Iotatonos", 412],
+      0x038C => ["/Omicrontonos", 722],
+      0x038E => ["/Upsilontonos", 816],
+      0x038F => ["/Omegatonos", 744],
+      0x03AC => ["/alphatonos", 522],
+      0x03AD => ["/epsilontonos", 420],
+      0x03AE => ["/etatonos", 522],
+      0x03AF => ["/iotatonos", 268],
+      0x0390 => ["/iotadieresistonos", 268],
+      0x0391 => ["/Alpha", 722],
+      0x0392 => ["/Beta", 667],
+      0x0393 => ["/Gamma", 578],
       0x0394 => ["/Delta", 643],
+      0x0395 => ["/Epsilon", 611],
+      0x0396 => ["/Zeta", 611],
+      0x0397 => ["/Eta", 722],
+      0x0398 => ["/Theta", 722],
+      0x0399 => ["/Iota", 333],
+      0x039A => ["/Kappa", 722],
+      0x039B => ["/Lambda", 724],
+      0x039C => ["/Mu", 889],
+      0x039D => ["/Nu", 722],
+      0x039E => ["/Xi", 643],
+      0x039F => ["/Omicron", 722],
+      0x03A0 => ["/Pi", 722],
+      0x03A1 => ["/Rho", 556],
+      0x03A3 => ["/Sigma", 582],
+      0x03A4 => ["/Tau", 611],
+      0x03A5 => ["/Upsilon", 722],
+      0x03A6 => ["/Phi", 730],
+      0x03A7 => ["/Chi", 722],
+      0x03A8 => ["/Psi", 737],
+      0x03A9 => ["/Omega", 744],
+      0x03AA => ["/Iotadieresis", 333],
+      0x03AB => ["/Upsilondieresis", 722],
+      0x03B0 => ["/upsilondieresistonos", 496],
+      0x03B1 => ["/alpha", 522],
+      0x03B2 => ["/beta", 508],
+      0x03B3 => ["/gamma", 440],
+      0x03B4 => ["/delta", 471],
+      0x03B5 => ["/epsilon", 420],
+      0x03B6 => ["/zeta", 414],
+      0x03B7 => ["/eta", 522],
+      0x03B8 => ["/theta", 480],
+      0x03B9 => ["/iota", 268],
+      0x03BA => ["/kappa", 502],
+      0x03BB => ["/lambda", 484],
+      0x03BC => ["/mu", 500],
+      0x03BD => ["/nu", 452],
+      0x03BE => ["/xi", 444],
+      0x03BF => ["/omicron", 500],
+      0x03C0 => ["/pi", 504],
+      0x03C1 => ["/rho", 500],
+      0x03C2 => ["/sigma1", 396],
+      0x03C3 => ["/sigma", 540],
+      0x03C4 => ["/tau", 400],
+      0x03C5 => ["/upsilon", 496],
+      0x03C6 => ["/phi", 578],
+      0x03C7 => ["/chi", 444],
+      0x03C8 => ["/psi", 624],
+      0x03C9 => ["/omega", 658],
+      0x03CA => ["/iotadieresis", 268],
+      0x03CB => ["/upsilondieresis", 496],
+      0x03CC => ["/omicrontonos", 500],
+      0x03CD => ["/upsilontonos", 496],
+      0x03CE => ["/omegatonos", 658],
       0x0401 => ["/afii10023", 611],
       0x0402 => ["/afii10051", 752],
       0x0403 => ["/afii10052", 578],
@@ -396,9 +464,6 @@ class PDFBeads::PDFBuilder::FontDataProvider
       0xFB01 => ["/fi", 556],
       0xFB02 => ["/fl", 556],
     ]
-    @chardata.default = proc do |fd, uni|
-      fd[uni] = [ sprintf( "/uni%04X",uni ), 500 ]
-    end
 
     @encodings = Array.new()
     @wlists = Array.new()
@@ -410,7 +475,7 @@ class PDFBeads::PDFBuilder::FontDataProvider
     w = 0.0
     line.each_char do |uc|
       begin
-        w += @chardata[uc.ord][1] * size / 1000.0
+        w += chardata( uc.ord )[1] * size / 1000.0
       rescue
         rawbytes = uc.unpack( 'C*' )
         bs = ''
@@ -427,7 +492,7 @@ class PDFBeads::PDFBuilder::FontDataProvider
   def getEncoding( enc )
     ret = Array.new()
     enc.each do |char|
-      ret << @chardata[char.ord][0]
+      ret << chardata( char.ord )[0]
     end
     ret
   end
@@ -437,7 +502,7 @@ class PDFBeads::PDFBuilder::FontDataProvider
   def getWidths( enc )
     ret = Array.new()
     enc.each do |char|
-      ret << @chardata[char.ord][1]
+      ret << chardata( char.ord )[1]
     end
     ret
   end
@@ -529,5 +594,11 @@ class PDFBeads::PDFBuilder::FontDataProvider
       'Filter' => '/FlateDecode',
     ], Zlib::Deflate.deflate( cmap,9 ) )
     toUnicode
+  end
+
+  def chardata( uni )
+    @chardata.fetch( uni ) do |u|
+      [ sprintf( "/uni%04X",uni ), 500 ]
+    end
   end
 end

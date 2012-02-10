@@ -357,7 +357,7 @@ class PDFBeads::PDFBuilder
       fin.each do |fl|
         next if /^\#/.match( fl )
 
-        if /^\/?([A-Za-z]+)[         ]*:[         ]+\"(.*)\"/.match( fl )
+        if /^\/?([A-Za-z]+)[ \t]*:[ \t]+\"(.*)\"/.match( fl )
           key = $1
           if keys.include? key
             begin
@@ -390,8 +390,8 @@ class PDFBeads::PDFBuilder
       end
 
       item_text = item[:title].to_binary
-      item_text.sub!( /\x00\x28/,"\x00\x5C\x28" )
-      item_text.sub!( /\x00\x29/,"\x00\x5C\x29" )
+      item_text.sub!( /\x28/,"\x5C\x28" )
+      item_text.sub!( /\x29/,"\x5C\x29" )
       item[:pdfobj] = XObj.new(Hash[
         'Title'  => "(\xFE\xFF#{item_text.to_text})",
         'Parent' => ref(item[:parent][:pdfobj].getID),
@@ -442,10 +442,95 @@ class PDFBeads::PDFBuilder
     return out
   end
 
+  def elementText( elem,charset )
+    txt = ''
+    begin
+      txt = elem.to_plain_text.strip
+      txt = Iconv.iconv( 'utf-8',charset,txt ).first unless charset.downcase.eql? 'utf-8'
+    rescue
+    end
+
+    txt.force_encoding( 'utf-8' ) if txt.respond_to? :force_encoding
+    return txt
+  end
+
+  def getOCRUnits( ocr_line,lbbox,fsize,charset,xscale,yscale )
+    units = Array.new()
+    ocr_words = ocr_line.search("//span[@class='ocrx_word']")
+    ocr_chars = nil
+    ocr_chars = ocr_line.at("//span[@class='ocr_cinfo']") if ocr_words.length == 0
+
+    # If 'ocrx_word' elements are available (as in Tesseract owtput), split the line
+    # into individual words
+    if ocr_words.length > 0
+      ocr_words.each do |word|
+        bbox = elementCoordinates( word,xscale,yscale )
+        txt = elementText( word,charset )
+        units << [txt,bbox]
+      end
+
+    # If 'ocrx_cinfo' data is available (as in Cuneiform) owtput, then split it 
+    # into individual characters and then combine them into words
+    elsif not ocr_chars.nil? and ocr_chars.attributes.to_hash.has_key? 'title'
+      if /x_bboxes([-\s\d]+)/.match( ocr_chars.attributes.to_hash['title'] )
+        coords = $1.strip.split(/\s+/)
+        ltxt = elementText( ocr_line,charset )
+        charcnt = 0
+        ltxt.each_char { |uc| charcnt += 1 }
+
+        if charcnt <= coords.length/4
+          i = 0
+          wtxt = ''
+          bbox = [-1,-1,-1,-1]
+          ltxt.each_char do |uc|
+            cbbox = [ (coords[i*4].to_i*xscale).to_f,(coords[i*4+1].to_i*xscale).to_f,
+                      (coords[i*4+2].to_i*yscale).to_f,(coords[i*4+3].to_i*yscale).to_f ]
+
+            unless cbbox[0] < 0
+              bbox[0] = cbbox[0] if cbbox[0] < bbox[0] or bbox[0] < 0
+              bbox[1] = cbbox[1] if cbbox[1] < bbox[1] or bbox[1] < 0
+              bbox[2] = cbbox[2] if cbbox[2] > bbox[2] or bbox[2] < 0
+              bbox[3] = cbbox[3] if cbbox[3] > bbox[3] or bbox[3] < 0
+              wtxt << uc
+
+            else
+              units << [wtxt,bbox]
+              bbox = [-1,-1,-1,-1]
+              if /^\s+$/.match( uc )
+                wtxt = ''
+
+              # A workaround for probable hpricot bug, which sometimes causes whitespace
+              # characters from inside a string to be stripped. So if we find
+              # a bounding box with negative values we assume there was a whitespace
+              # character here, even if not preserved in the string itself
+              else
+                wtxt = uc
+                i += 1
+                bbox =  [ (coords[i*4].to_i*xscale).to_f,(coords[i*4+1].to_i*xscale).to_f,
+                          (coords[i*4+2].to_i*yscale).to_f,(coords[i*4+3].to_i*yscale).to_f ]
+              end
+            end
+            i += 1
+          end
+          units << [wtxt,bbox] unless wtxt.eql? ''
+        end
+      end
+    end
+
+    # If neither word nor character bounding boxes are available, then store the line as a whole
+    if units.length == 0
+      ltxt = elementText( ocr_line,charset )
+      units << [ltxt,lbbox] unless ltxt.eql? ''
+    end
+
+    units[units.length-1][0].sub!( /-\Z/, "\xC2\xAD" ) unless units.length == 0
+    return units
+  end
+
   def getPDFText( hocr,pheight,xscale,yscale,encodings )
     fsize = 10
-    cur_enc = encodings[0]
-    ret = " BT 3 Tr /Fnt1 #{fsize} Tf "
+    cur_enc = nil
+    ret = " BT 3 Tr "
 
     charset = 'utf-8'
     hocr.search("//meta[@http-equiv='Content-Type']").each do |el|
@@ -455,71 +540,107 @@ class PDFBeads::PDFBuilder
     end
 
     hocr.search("//span[@class='ocr_line']").each do |line|
-      txt = line.to_plain_text.strip.sub( /[\n\r]+/,' ' )
-      begin
-        txt = Iconv.iconv( 'utf-8',charset,txt ).first unless charset.downcase.eql? 'utf-8'
-      rescue
-        txt = ''
-      end
-      next if txt.eql? ''
-      txt.force_encoding( 'utf-8' ) if txt.respond_to? :force_encoding
-      txt.sub!( /-\Z/, "\xC2\xAD" )
+      lbbox = elementCoordinates( line,xscale,yscale )
+      next if lbbox[2] - lbbox[0] <= 0 or lbbox[3] - lbbox[1] <= 0
+      units = getOCRUnits( line,lbbox,fsize,charset,xscale,yscale )
+      next if units.length == 0
 
-      bbox = elementCoordinates( line,xscale,yscale )
-      ratio = ( bbox[2] - bbox[0] ) / @fdata.getLineWidth( txt,fsize )
+      wwidth = 0
+      ltxt = ''
+      units.each do |unit|
+        ltxt << unit[0]
+        wwidth += ( unit[1][2] - unit[1][0] )
+      end
+      ratio = wwidth / @fdata.getLineWidth( ltxt,fsize )
+      pos = lbbox[0]
+      posdiff = 0
+
       ret << sprintf( "%f %f %f %f %f %f Tm ",
-        ratio, 0, 0, ratio, bbox[0], pheight - bbox[3] - @fdata.header['Descent'] * fsize / 1000.0)
+        ratio, 0, 0, ratio, lbbox[0], pheight - lbbox[3] - @fdata.header['Descent'] * fsize / 1000.0 * ratio)
+      in_txt = false
 
-      txt8 = ''
-      txt.each_char do |char|
-        begin
-          Iconv.iconv( "utf-16be","utf-8",char )
-        rescue
-          rawbytes = char.unpack( 'C*' )
-          bs = ''
-          rawbytes.each{ |b| bs << sprintf( "%02x",b ) }
-          $stderr.puts( "Warning: an invalid UTF-8 sequence (#{bs}) in the hOCR data." )
-          char = '?' * rawbytes.length
-        end
+      units.each_index do |i|
+        unit = units[i]
+        wtxt = unit[0]
+        bbox = unit[1]
 
-        encoded = false
-        unless cur_enc.include? char
-          encodings.each_index do |i|
-            enc = encodings[i]
-            next if enc == cur_enc
+        posdiff = ( (pos - bbox[0]) * 1000 / fsize / ratio ).to_i if i > 0
+        pos = bbox[0] + ( @fdata.getLineWidth( wtxt,fsize ) * ratio )
 
-            if enc.include? char
-              ret << "<#{txt8}> Tj "
-              cur_enc = enc
-              ret << "/Fnt#{i + 1} #{fsize} Tf "
-              txt8 = ''
-              encoded = true
-              break
+        txt8 = ''
+        wtxt.each_char do |char|
+          begin
+            Iconv.iconv( "utf-16be","utf-8",char )
+          rescue
+            rawbytes = char.unpack( 'C*' )
+            bs = ''
+            rawbytes.each{ |b| bs << sprintf( "%02x",b ) }
+            $stderr.puts( "Warning: an invalid UTF-8 sequence (#{bs}) in the hOCR data." )
+            char = '?' * rawbytes.length
+          end
+
+          encoded = false
+          if cur_enc.nil? or not cur_enc.include? char
+            encodings.each_index do |i|
+              enc = encodings[i]
+              next if enc == cur_enc
+
+              if enc.include? char
+                if in_txt
+                  ret << "#{posdiff} " if posdiff != 0
+                  ret << "<#{txt8}> " unless txt8.eql? ''
+                  ret << "] TJ "
+                end
+                cur_enc = enc
+                ret << "/Fnt#{i + 1} #{fsize} Tf "
+                txt8 = ''
+                posdiff = 0
+                encoded = true
+                in_txt = false
+                break
+              end
+            end
+
+            unless encoded
+              last = encodings[-1]
+              if last.length < 256
+                last << char
+              else
+                last = [ ' ',char ]
+                encodings << last
+              end
+
+              if cur_enc != last
+                if in_txt
+                  ret << "#{posdiff} " if posdiff != 0
+                  ret << "<#{txt8}> " unless txt8.eql? ''
+                  ret << "] TJ "
+                end
+                cur_enc = last
+                ret << "/Fnt#{encodings.length} #{fsize} Tf "
+                txt8 = ''
+                posdiff = 0
+                in_txt = false
+              end
             end
           end
 
-          unless encoded
-            last = encodings[-1]
-            if last.length < 256
-              last << char
-            else
-              last = [ ' ',char ]
-              encodings << last
-            end
-
-            if cur_enc != last
-              ret << "<#{txt8}> Tj "
-              cur_enc = last
-              ret << "/Fnt#{encodings.length} #{fsize} Tf "
-              txt8 = ''
-            end
+          unless in_txt
+            ret << "[ "
+            in_txt = true
           end
+          txt8 << sprintf( "%02X",cur_enc.index(char) )
         end
 
-        txt8 << sprintf( "%02X",cur_enc.index(char) )
+        unless txt8.eql? ''
+          ret << "#{posdiff} " if posdiff != 0
+          ret << "<#{txt8}> "
+        end
       end
-
-      ret << "<#{txt8}> Tj " unless txt8.eql? ''
+      if in_txt
+        ret << "] TJ "
+        in_txt = false
+      end
     end
 
     ret << "ET "

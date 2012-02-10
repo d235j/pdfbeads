@@ -51,3 +51,8 @@ Note that PDFBeads is intended for creating PDF files from previously
 processed images, and so it can't done some operations (e. g. converting
 color or grayscale scans to B&W) which should be typically performed with
 a special scan processing application, such as ScanTailor.
+
+PDFBeads requires RMagick (the Ruby bindings for the popular Magick++ image
+processing library). The hpricot extension is not required, but highly
+recommended, as without it PDFBeads would not be able to read data from hOCR
+files.

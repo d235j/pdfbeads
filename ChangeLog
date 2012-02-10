@@ -26,3 +26,16 @@
 
     * Some tweaks to minimize the effect of page labels being inconsistently handled
       in various PDF viewers (prefer ISO-8859-1 strings if possible).
+
+2012 February 5 (Alexey Kryukov) Version 1.0.6
+
+    + Add Greek letters (the monotonic set) to the list of characters with hardcoded
+      glyph names and width.
+
+    * Minor bugs fixed.
+
+2012 February 10 (Alexey Kryukov) Version 1.0.7
+
+    + An attempt to achive better positioning of the hidden text layer, taking into
+      account not just lines, but also individual words. This should work with hOCR
+      files produced with Cuneiform or Tesseract.

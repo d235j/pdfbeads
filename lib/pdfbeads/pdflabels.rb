@@ -107,7 +107,7 @@ class PDFBeads::PDFBuilder::PDFLabels < Array
     ]
     res = ''
 
-    numerals.keys.sort{ |a,b| b <=> a }.reverse.each do |val|
+    numerals.keys.sort{ |a,b| b <=> a }.each do |val|
       while num >= val
         res << numerals[val]
         num -= val
