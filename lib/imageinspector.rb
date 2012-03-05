@@ -433,7 +433,7 @@ class ImageInspector::Image
           when 'PLTE'
             @palette = Array.new()
             for i in (0...length/3)
-              r, g, b = io.read( 3 ).unpack( 'ccc' )
+              r, g, b = io.read( 3 ).unpack( 'CCC' )
               @palette << [ r, g, b ]
             end
           when 'IDAT'

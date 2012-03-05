@@ -39,3 +39,9 @@
     + An attempt to achive better positioning of the hidden text layer, taking into
       account not just lines, but also individual words. This should work with hOCR
       files produced with Cuneiform or Tesseract.
+
+2012 March 5 (Alexey Kryukov) Version 1.0.8
+
+    Palette colors in PNG images were treated as signed chars and this could cause
+    indexed images to be incorrecty displayed in the resulting PDF.
+
