@@ -444,14 +444,14 @@ class ImageInspector::Image
             @x_dpi = (x_dpm/100 * 2.54).round
             @y_dpi = (y_dpm/100 * 2.54).round
           when 'tRNS'
-            trans = Hash.new[]
+            trans = Hash.new()
             case @cspace
               when :Indexed
                 # Indexed colour, RGB. Each byte in this chunk is an alpha for
                 # the palette index in the PLTE ("palette") chunk up until the
                 # last non-opaque entry. Set up an array, stretching over all
                 # palette entries which will be 0 (opaque) or 1 (transparent).
-                @trans = io.read( size ).unpack( 'C*' )
+                @trans = io.read( length ).unpack( 'C*' )
               when :DeviceGray
                 # Greyscale. Corresponding to entries in the PLTE chunk.
                 # Grey is two bytes, range 0 .. (2 ^ bit-depth) - 1

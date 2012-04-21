@@ -326,6 +326,17 @@ class PDFBeads::PDFBuilder
       cat.addToDict('Outlines', ref(toc[0][:pdfobj].getID))
       cat.addToDict('PageMode', "/UseOutlines")
     end
+
+    if @pdfargs[:delfiles]
+      pagefiles.each do |p|
+        $stderr.puts( "Cleaning up temporary files for #{p.name}" )
+        safe_delete( p.fg_layer ) if p.fg_created
+        safe_delete( p.bg_layer ) if p.bg_created
+        p.stencils.each do |s|
+          safe_delete( s[:path] ) if s[:created]
+        end
+      end
+    end
   end
 
   # Output the created PDF file to the disk.
@@ -346,6 +357,15 @@ class PDFBeads::PDFBuilder
   end
 
   private
+
+  def safe_delete( path )
+    begin
+      File.delete( path )
+      $stderr.puts( " Deleted #{path}" )
+    rescue Exception => e
+        $stderr.puts( "Could not delete #{path}: #{e.message}" )
+    end
+  end
 
   def parseMeta( path )
     ret = Hash.new()
@@ -390,8 +410,9 @@ class PDFBeads::PDFBuilder
       end
 
       item_text = item[:title].to_binary
-      item_text.sub!( /\x28/,"\x5C\x28" )
-      item_text.sub!( /\x29/,"\x5C\x29" )
+      item_text.gsub!( /\x5C/,"\x5C\x5C" )
+      item_text.gsub!( /\x28/,"\x5C\x28" )
+      item_text.gsub!( /\x29/,"\x5C\x29" )
       item[:pdfobj] = XObj.new(Hash[
         'Title'  => "(\xFE\xFF#{item_text.to_text})",
         'Parent' => ref(item[:parent][:pdfobj].getID),
@@ -465,6 +486,7 @@ class PDFBeads::PDFBuilder
     if ocr_words.length > 0
       ocr_words.each do |word|
         bbox = elementCoordinates( word,xscale,yscale )
+        next if bbox == [0,0,0,0]
         txt = elementText( word,charset )
         units << [txt,bbox]
       end

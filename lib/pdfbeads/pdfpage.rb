@@ -37,7 +37,7 @@ class PDFBeads::PageDataProvider < Array
   # Allows to collect data needed for building an individual page
   # of a PDF document and gives access to those data.
   class PageData
-    attr_reader :name, :basename, :s_type, :stencils, :hocr_path
+    attr_reader :name, :basename, :s_type, :stencils, :hocr_path, :fg_created, :bg_created
     attr_accessor :width, :height, :x_res, :y_res, :fg_layer, :bg_layer
 
     def initialize( path,basename,args,exts,pref )
@@ -49,6 +49,7 @@ class PDFBeads::PageDataProvider < Array
       @exts = exts
       @pref = pref
       @bg_layer = @fg_layer = nil
+      @bg_created = @fg_created = false
     end
 
     def fillStencilArray()
@@ -60,6 +61,7 @@ class PDFBeads::PageDataProvider < Array
       map = Hash[
         :path => @name,
         :rgb  => [0.0, 0.0, 0.0],
+        :created => false
       ]
 
       insp = ImageInspector.new( @name )
@@ -72,7 +74,7 @@ class PDFBeads::PageDataProvider < Array
         @x_res = @y_res = fres
       end
 
-      if insp.depth == 1
+      if insp.depth == 1 and insp.trans.nil?
         @stencils << map
         ret = 1
 
@@ -190,6 +192,7 @@ class PDFBeads::PageDataProvider < Array
           px = Pixel.from_color( color )
           unless color.eql? exc
             cpath = "#{@basename}.#{color}.tiff"
+            created = false
             if not File.exists? cpath or force
               bitonal = img.copy
               # Caution: replacing colors in the colormap currently only works
@@ -208,10 +211,12 @@ class PDFBeads::PageDataProvider < Array
                 self.compression = Group4Compression
               end
               bitonal.destroy!
+              created = true
             end
             cmap = Hash[
               :path => cpath,
-              :rgb  => [px.red.to_f/QuantumRange, px.green.to_f/QuantumRange, px.blue.to_f/QuantumRange]
+              :rgb  => [px.red.to_f/QuantumRange, px.green.to_f/QuantumRange, px.blue.to_f/QuantumRange],
+              :created => created
             ]
             @stencils << cmap
             ret += 1
@@ -231,6 +236,7 @@ class PDFBeads::PageDataProvider < Array
           self.compression = Group4Compression
         }
         bitonal.destroy!
+        map[:created] = true
       end
 
       bgf = @pageargs[:bg_format]
@@ -263,6 +269,7 @@ class PDFBeads::PageDataProvider < Array
         end
 
         writeImage( img,bgpath,bgf )
+        @bg_created = true
       end
 
       map[:path] = binpath
@@ -327,7 +334,10 @@ class PDFBeads::PageDataProvider < Array
       end
 
       bgpath = "#{@basename}.bg." << fmt.downcase
-      @bg_layer = bgpath if writeImage( bg,bgpath,fmt )
+      if writeImage( bg,bgpath,fmt )
+        @bg_layer = bgpath
+        @bg_created = true
+      end
 
       bg.destroy!
       no_fg.destroy!
@@ -352,7 +362,10 @@ class PDFBeads::PageDataProvider < Array
         fg.alpha( DeactivateAlphaChannel )
 
         fgpath = "#{@basename}.fg." << fmt.downcase
-        @fg_layer = fgpath if writeImage( fg,fgpath,fmt )
+        if writeImage( fg,fgpath,fmt )
+          @fg_layer = fgpath
+          @fg_created = true
+        end
 
         fg.destroy!
         no_bg.destroy!

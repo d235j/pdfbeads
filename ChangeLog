@@ -42,6 +42,16 @@
 
 2012 March 5 (Alexey Kryukov) Version 1.0.8
 
-    Palette colors in PNG images were treated as signed chars and this could cause
-    indexed images to be incorrecty displayed in the resulting PDF.
+    * Palette colors in PNG images were treated as signed chars and this could cause
+      indexed images to be incorrecty displayed in the resulting PDF.
 
+2012 April 22 (Alexey Kryukov) Version 1.0.9
+
+    + Add an option allowing to delete image files produced as an intermediate stage
+      during the PDF creation process.
+
+    * Processing indexed images with a small number of colors was broken.
+
+    * Don't attempt to use 'ocrx_word' elements which contain no bounding box
+      data (this should fix the problem with the hOCR output produced by some
+      tesseract versions).
