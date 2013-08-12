@@ -41,9 +41,12 @@ include PDFBeads
 pdfargs  = Hash[
   :labels         => nil,
   :toc            => nil,
-  :pagelayout     => 'TwoPageRight',
+  :pagelayout     => 'OneColumn',
   :meta           => nil,
-  :delfiles       => false
+  :textpdf        => nil,
+  :delfiles       => false,
+  :debug          => false,
+  :rtl            => false
 ]
 pageargs = Hash[
   :threshold       => 1,
@@ -86,6 +89,23 @@ OptionParser.new() do |opts|
                 "`TwoColumnRight', `TwoPageLeft', or `TwoPageRight'") do |pagelayout|
 
     pdfargs[:pagelayout] = pagelayout
+  end
+  opts.on("-R", "--right-to-left",
+                "Set the flag indicating that the preferred reading",
+                "direction for the resulting PDF file is right to left") do |rtl|
+    pdfargs[:rtl] = rtl
+  end
+  opts.on("-T", "--text-pdf PDFFILE",
+                "Specify a PDF file produced by passing the same set",
+		"of files to an OCR program. Pdfbeads will use that file",
+		"to generate the hidden text layer for its PDF output.") do |pdffile|
+
+    if $has_pdfreader
+      pdfargs[:textpdf] = pdffile
+    else
+      $stderr.puts( "Warning: the pdf/reader extension is not available." )
+      $stderr.puts( "\tthe -T/--text-pdf option is ignored." )
+    end
   end
 
   opts.separator "\n"
@@ -147,7 +167,7 @@ OptionParser.new() do |opts|
                 "Compression method for background images. Acceptable",
                 "values are JP2|JPX|JPEG2000, JPG|JPEG or PNG|LOSSLESS.",
                 "JP2 is used by default, unless this format is not",
-                "supported by the available version of ImageMagick" ) do |format|
+                "supported by the available ImageMagick version" ) do |format|
     case format.upcase
     when 'JP2', 'JPX', 'J2K', 'JPEG2000'
       pageargs[:bg_format] = 'JP2'
@@ -177,6 +197,11 @@ OptionParser.new() do |opts|
   opts.on("-o", "--output FILE",
                 "Print output to a file instead of STDERR") do |f|
     outpath = f
+  end
+  opts.on("-D", "--debug",
+                "Simplify debugging the PDF output by making the hidden",
+                "text layer visible and using uncompressed page streams") do |dbg|
+    pdfargs[:debug] = dbg
   end
   opts.on_tail("-h", "--help", "Show this message") do
     puts opts

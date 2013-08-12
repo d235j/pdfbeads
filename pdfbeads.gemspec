@@ -30,7 +30,7 @@
 
 spec = Gem::Specification.new do |s|
   s.name = 'pdfbeads'
-  s.version = '1.0.9'
+  s.version = '1.1.0'
   s.summary = "PDFBeads -- convert scanned images to a single PDF file."
   s.description = <<-EOF
     PDFBeads is a small utility written in Ruby which takes scanned
@@ -48,6 +48,7 @@ spec = Gem::Specification.new do |s|
   # s.add_dependency('rmagick', '>= 2.13.0')
   s.requirements << 'RMagick, v2.13.0 or greater'
   s.requirements << 'Hpricot, v0.8.3 or greater'
+  s.requirements << 'PDF::Reader, v1.0.0 or greater'
   s.executables = [ 'pdfbeads' ]
   s.default_executable = 'pdfbeads'
   s.files = Dir['lib/**/*.rb'] + Dir['bin/*'] + Dir['doc/*.html'] +

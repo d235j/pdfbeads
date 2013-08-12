@@ -1,0 +1,9 @@
+Для сборки:
+gem build pdfbeads.gemspec
+
+Для загрузки на rubygem:
+gem push pdfbeads.version.gem
+
+Для обновления git на rubyforge:
+git commit <files>
+git push origin master:refs/heads/master

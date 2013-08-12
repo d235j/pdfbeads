@@ -8,7 +8,7 @@
 # Unlike other PDF creation tools, this utility attempts to implement
 # the approach typically used for DjVu books. Its key feature is
 # separating scanned text (typically black, but indexed images with
-# a small number of colors are also accepted) from halftone images 
+# a small number of colors are also accepted) from halftone images
 # placed into a background layer.
 #
 # Copyright (C) 2010 Alexey Kryukov (amkryukov@gmail.com).
@@ -96,7 +96,7 @@ class PDFBeads::PageDataProvider < Array
 
       $stderr.puts( "Prepared data for processing #{@name}\n" )
       if insp.nextImage
-        $stderr.puts( "Warning: #{@name} contains multiple images, but only the first one") 
+        $stderr.puts( "Warning: #{@name} contains multiple images, but only the first one")
         $stderr.puts( "\tis going to be used\n" )
       end
       ret
@@ -117,8 +117,8 @@ class PDFBeads::PageDataProvider < Array
         @bg_layer = bgpath unless bgpath.nil?
 
         # If updating auxiliary files is requested and the base image is
-        # either monochrome or indexed with just a few colors (i. e. doesn't
-        # contain any elements which should be encoded to the background layer),
+        # either bitonal or indexed with just a few colors (i. e. doesn't
+        # contain any elements which should be placed to the background layer),
         # then the *.color.* image (if present) takes priority over any existing
         # *.bg.* and *.fg.* images. So we should regenerate them.
         if bgpath.nil? or ( force and not @s_type.eql? 'c' )
@@ -139,7 +139,7 @@ class PDFBeads::PageDataProvider < Array
         @fg_layer = fgpath unless fgpath.nil?
       end
 
-      if $has_hpricot
+      if $has_hpricot and not @pageargs[:pages_per_dict].nil?
         @hocr_path = Dir.entries('.').detect do |f|
           /\A#{@basename}.(HOCR|HTML?)/i.match(f)
         end
@@ -353,7 +353,7 @@ class PDFBeads::PageDataProvider < Array
         # to achieve the desired color diffusion. The idea is inspired by
         # Anthony Thyssen's http://www.imagemagick.org/Usage/scripts/hole_fill_shepards
         # script, which is intended just for this purpose (i. e. removing undesired
-        # areas from the image). However our approach is a bit cruder (but still
+        # areas from the image). However our approach is a bit more crude (but still
         # effective).
         fg.resize!( width=imw/100,height=imh/100,filter=GaussianFilter )
         fg.resize!( width=imw,height=imh,filter=GaussianFilter )
@@ -471,7 +471,7 @@ class PDFBeads::PageDataProvider < Array
       end
 
       if pidx == per_dict or i == length - 1
-        # The jbig2 encoder processes a bunch of files at once, producing 
+        # The jbig2 encoder processes a bunch of files at once, producing
         # pages which depend from a shared dictionary. Thus we can skip this
         # stage only if both the dictionary and each of the individual pages
         # are already found on the disk
