@@ -151,9 +151,14 @@ class PDFBeads::PDFBuilder
           begin
             # If possible, use iso8859-1 (aka PDFDocEncoding) for page labels:
             # it is at least guaranteed to be safe
-            ltitl = Iconv.iconv( "iso8859-1", "utf-8", rng[:prefix] ).first
+            if rng[:prefix].respond_to? :encode
+              ltitl = rng[:prefix].encode( "iso8859-1", "utf-8" )
+            else
+              ltitl = Iconv.iconv( "iso8859-1", "utf-8", rng[:prefix] ).first
+            end
             nTree << "/P (#{ltitl.to_text}) "
-          rescue Iconv::InvalidCharacter, Iconv::IllegalSequence
+          # Iconv::InvalidCharacter, Iconv::IllegalSequence, Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
+          rescue
             ltitl = Iconv.iconv( "utf-16be", "utf-8", rng[:prefix] ).first
             # If there is no number (just prefix) then put a zero character after the prefix:
             # this makes acroread happy, but prevents displaying the number in evince
@@ -270,7 +275,7 @@ class PDFBeads::PDFBuilder
         procSet << '/Text'
         c_str   << getPDFText( reader,pidx,@pdfargs[:debug] )
       elsif not p.hocr_path.nil?
-        hocr = open( p.hocr_path ) { |f| Hpricot.parse( f ) }
+        hocr = open( p.hocr_path ) { |f| Nokogiri::HTML( f ) }
         procSet << '/Text'
         c_str   << getHOCRText( hocr,pheight,72.0/xres,72.0/yres,encodings )
       end
@@ -394,7 +399,11 @@ class PDFBeads::PDFBuilder
           key = $1
           if keys.include? key
             begin
-              ret[key] = Iconv.iconv( "utf-16be", "utf-8", $2 ).first
+              if $2.respond_to? :encode
+                ret[key] = $2.encode( "utf-16be", "utf-8" )
+              else
+                ret[key] = Iconv.iconv( "utf-16be", "utf-8", $2 ).first
+              end
             rescue
               $stderr.puts("Error: metadata should be specified in utf-8")
             end
@@ -631,8 +640,8 @@ class PDFBeads::PDFBuilder
   def elementCoordinates( element,xscale,yscale )
     out = [0,0,0,0]
 
-    if element.attributes.to_hash.has_key? 'title'
-      if /bbox((\s+\d+){4})/.match(element.attributes.to_hash['title'])
+    if element.attributes.has_key? 'title'
+      if /bbox((\s+\d+){4})/.match(element.attributes['title'].content)
         coords = $1.strip.split(/\s+/)
         out = [ (coords[0].to_i*xscale).to_f,(coords[1].to_i*xscale).to_f,
                 (coords[2].to_i*yscale).to_f,(coords[3].to_i*yscale).to_f ]
@@ -641,23 +650,16 @@ class PDFBeads::PDFBuilder
     return out
   end
 
-  def elementText( elem,charset )
-    txt = ''
-    begin
-      txt = elem.to_plain_text.strip
-      txt = Iconv.iconv( 'utf-8',charset,txt ).first unless charset.downcase.eql? 'utf-8'
-    rescue
-    end
-
-    txt.force_encoding( 'utf-8' ) if txt.respond_to? :force_encoding
-    return txt
+  def elementText( elem )
+    # used to put some Iconv stuff here, but nokogiri makes this conversion itself
+    return elem.inner_text.strip
   end
 
-  def getOCRUnits( ocr_line,lbbox,fsize,charset,xscale,yscale )
+  def getOCRUnits( ocr_line,lbbox,fsize,xscale,yscale )
     units = Array.new()
-    ocr_words = ocr_line.search("//span[@class='ocrx_word']")
+    ocr_words = ocr_line.xpath(".//span[@class='ocrx_word']")
     ocr_chars = nil
-    ocr_chars = ocr_line.at("//span[@class='ocr_cinfo']") if ocr_words.length == 0
+    ocr_chars = ocr_line.at_xpath(".//span[@class='ocr_cinfo']") if ocr_words.length == 0
 
     # If 'ocrx_word' elements are available (as in Tesseract owtput), split the line
     # into individual words
@@ -665,16 +667,16 @@ class PDFBeads::PDFBuilder
       ocr_words.each do |word|
         bbox = elementCoordinates( word,xscale,yscale )
         next if bbox == [0,0,0,0]
-        txt = elementText( word,charset )
+        txt = elementText( word )
         units << [txt,bbox]
       end
 
     # If 'ocrx_cinfo' data is available (as in Cuneiform) owtput, then split it
     # into individual characters and then combine them into words
-    elsif not ocr_chars.nil? and ocr_chars.attributes.to_hash.has_key? 'title'
-      if /x_bboxes([-\s\d]+)/.match( ocr_chars.attributes.to_hash['title'] )
+    elsif not ocr_chars.nil? and ocr_chars.attributes.has_key? 'title'
+      if /x_bboxes([-\s\d]+)/.match( ocr_chars.attributes['title'].content )
         coords = $1.strip.split(/\s+/)
-        ltxt = elementText( ocr_line,charset )
+        ltxt = elementText( ocr_line )
         charcnt = 0
         ltxt.each_char { |uc| charcnt += 1 }
 
@@ -699,10 +701,11 @@ class PDFBeads::PDFBuilder
               if /^\s+$/.match( uc )
                 wtxt = ''
 
-              # A workaround for probable hpricot bug, which sometimes causes whitespace
-              # characters from inside a string to be stripped. So if we find
-              # a bounding box with negative values we assume there was a whitespace
-              # character here, even if not preserved in the string itself
+              # A workaround for probable hpricot bug (TODO: is Nokogiri affected?),
+              # which sometimes causes whitespace characters from inside a string
+              # to be stripped. So if we find a bounding box with negative values
+              # we assume there was a whitespace character here, even if not
+              # preserved in the string itself
               else
                 wtxt = uc
                 i += 1
@@ -719,7 +722,7 @@ class PDFBeads::PDFBuilder
 
     # If neither word nor character bounding boxes are available, then store the line as a whole
     if units.length == 0
-      ltxt = elementText( ocr_line,charset )
+      ltxt = elementText( ocr_line )
       units << [ltxt,lbbox] unless ltxt.eql? ''
     end
 
@@ -732,17 +735,10 @@ class PDFBeads::PDFBuilder
     cur_enc = nil
     ret = " BT 3 Tr "
 
-    charset = 'utf-8'
-    hocr.search("//meta[@http-equiv='Content-Type']").each do |el|
-      attrs = el.attributes.to_hash
-      charset = $1 if attrs.has_key? 'content' and
-        /\Atext\/html;charset=([A-Za-z0-9-]+)\Z/i.match( attrs['content'] )
-    end
-
-    hocr.search("//span[@class='ocr_line']").each do |line|
+    hocr.xpath("//span[@class='ocr_line']").each do |line|
       lbbox = elementCoordinates( line,xscale,yscale )
       next if lbbox[2] - lbbox[0] <= 0 or lbbox[3] - lbbox[1] <= 0
-      units = getOCRUnits( line,lbbox,fsize,charset,xscale,yscale )
+      units = getOCRUnits( line,lbbox,fsize,xscale,yscale )
       next if units.length == 0
 
       wwidth = 0
@@ -751,7 +747,9 @@ class PDFBeads::PDFBuilder
         ltxt << unit[0]
         wwidth += ( unit[1][2] - unit[1][0] )
       end
-      ratio = wwidth / @fdata.getLineWidth( ltxt,fsize )
+      lw = @fdata.getLineWidth( ltxt,fsize )
+      ratio = 1
+      ratio = wwidth / lw unless lw == 0
       pos = lbbox[0]
       posdiff = 0
 
@@ -770,7 +768,11 @@ class PDFBeads::PDFBuilder
         txt8 = ''
         wtxt.each_char do |char|
           begin
-            Iconv.iconv( "utf-16be","utf-8",char )
+            if char.respond_to? :encode
+              char.encode!( "utf-16be", "utf-8" )
+            else
+              Iconv.iconv( "utf-16be","utf-8",char )
+            end
           rescue
             rawbytes = char.unpack( 'C*' )
             bs = ''

@@ -8,7 +8,7 @@
 # Unlike other PDF creation tools, this utility attempts to implement
 # the approach typically used for DjVu books. Its key feature is
 # separating scanned text (typically black, but indexed images with
-# a small number of colors are also accepted) from halftone images 
+# a small number of colors are also accepted) from halftone images
 # placed into a background layer.
 #
 # Copyright (C) 2010 Alexey Kryukov (amkryukov@gmail.com).
@@ -38,7 +38,7 @@
 # <indent>"Title" "Page Number" [0|-|1|+]
 #
 # The indent is used to determine the level of this outline item: it may
-# consist either of spaces or of tabs, but it is not allowed to 
+# consist either of spaces or of tabs, but it is not allowed to
 # mix both characters in the same file. The title and page number are
 # separated with an arbitrary number of whitespace characters and are
 # normally enclosed into double quotes. The third, optional argument
@@ -101,7 +101,11 @@ class PDFBeads::PDFBuilder::PDFTOC < Array
           title = parts[0].gsub(/\A"/m,"").gsub(/"\Z/m, "")
           ref   = parts[1].gsub(/\A"/m,"").gsub(/"\Z/m, "")
           begin
-            title = Iconv.iconv( "utf-16be", "utf-8", title ).first
+            if title.respond_to? :encode
+              title.encode!( "utf-16be", "utf-8" )
+            else
+              title = Iconv.iconv( "utf-16be", "utf-8", title ).first
+            end
           rescue
             $stderr.puts("Error: TOC should be specified in utf-8")
             return

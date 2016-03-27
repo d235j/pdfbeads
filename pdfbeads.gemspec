@@ -30,7 +30,7 @@
 
 spec = Gem::Specification.new do |s|
   s.name = 'pdfbeads'
-  s.version = '1.1.0'
+  s.version = '1.1.1'
   s.summary = "PDFBeads -- convert scanned images to a single PDF file."
   s.description = <<-EOF
     PDFBeads is a small utility written in Ruby which takes scanned

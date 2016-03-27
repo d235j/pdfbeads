@@ -30,7 +30,7 @@
 #
 #######################################################################
 
-# Represents a set of page images accompanies with auxiliary files
+# Represents a set of page images accompanied with auxiliary files
 # needed to build a PDF document.
 class PDFBeads::PageDataProvider < Array
 
@@ -139,7 +139,7 @@ class PDFBeads::PageDataProvider < Array
         @fg_layer = fgpath unless fgpath.nil?
       end
 
-      if $has_hpricot and not @pageargs[:pages_per_dict].nil?
+      if $has_nokogiri and not @pageargs[:pages_per_dict].nil?
         @hocr_path = Dir.entries('.').detect do |f|
           /\A#{@basename}.(HOCR|HTML?)/i.match(f)
         end

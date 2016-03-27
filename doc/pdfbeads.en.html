@@ -107,8 +107,8 @@ systems. A Windows installable package is available at the
 <a href="http://www.rubyinstaller.org/">RubyInstaller</a> site. You will
 also need RubyGems (the standard Ruby package manager) and some extensions
 available (like pdfbeads itself) via the RubyGems framework, namely RMagick,
-Hpricot and PDF::Reader. Note that pdfbeads will may even if the last two
-packages are not available. However, without Hpricot it will not be possible
+Nokogiri and PDF::Reader. Note that pdfbeads will may even if the last two
+packages are not available. However, without Nokogiri it will not be possible
 to read optically recognized text from hOCR files, while PDF::Reader is needed
 in order to be able to import the text layer from another PDF file.</p>
 
@@ -403,28 +403,30 @@ ignored.</p>
 
 <h3>Page labels</h3>
 
-<p>pdfbeads позволяет задать метки страниц, которые могут быть использованы
-просмотрщиком PDF вместо их порядковых номеров. Таким образом можно привести
-нумерацию страниц электронного документа в соответствие с нумерацией страниц
-бумажной книги. Для этой цели pdfbeads использует параметр <tt>-L</tt> (или
-<tt>--labels</tt>). Аргумент этого параметра обязательно заключается в
-кавычки и может состоять из одной или нескольких спецификаций диапазонов
-нумерации, отделенных друг от друга символом точки с запятой.</p>
+<p>pdfbeads allows to generate page labels which may be then displayed by
+a PDF viewer instead of physical page numbers. Thus it is possible
+to bring page numbering of the electronic document into accordance with
+the pagination of the paper book. Page labels may be specified with the
+<tt>-L</tt> (or <tt>--labels</tt>) command line key. This option takes
+an argument which should be enclosed into quotation marks and may contain
+one or more numbering range specifications, separated with semicolons.</p>
 
-<p>Диапазон нумерации формируется из следующих компонентов (каждый из
-них может быть опущен):</p>
+<p>A numbering range is constructed from the following components (each of
+them being optional):</p>
 
 <ul>
-<li><p>Порядковый номер первой страницы диапазона в PDF-файле, отделенный
-двоеточием от остальной части спецификации. Внимание: страницы PDF-документа
-нумеруются, начиная с нуля, так что для первого диапазона это значение
-всегда должно быть равным нулю.</p></li>
+<li><p>The physical number of the first page of the given range in the
+PDF document, separated with a colon from the rest of the specification.
+Note that pages in PDF documents are numbered starting from zero, so for
+the first range this value should always be zero.</p></li>
 
-<li><p>Произвольный префикс нумерации (допускаются любые символы, кроме
-двойной кавычки, двоеточия, точки с запятой и знака процента).</p></li>
+<li><p>An arbitrary numbering prefix (any characters, except a double
+quotation mark, a colon, a semicolon, and a percent sign are allowed
+here).</p></li>
 
-<li><p>Описание формата нумерации, начинающееся со знака процента,
-за которым следует латинская буква, указывающая на ее стиль:</p></li>
+<li><p>A numbering format description, which starts from a percent sign
+followed by a single Latin letter corresponding to a particular numbering
+style:</p></li>
 
 <dl>
 
@@ -445,17 +447,16 @@ ignored.</p>
 
 </dl>
 
-<p>Между знаком процента и идентификатором формата нумерации может стоять
-произвольное число, обозначающее отображаемый номер начальной страницы
-(по умолчанию&nbsp;&mdash; 1).</p>
+<p>Between the percent sign and the numbering format identifier it is
+possible to put an arbitrary number, thus setting the number to be
+displayed for the first page of the given range (1 by default).</p>
 
 </ul>
 
-<p>Предположим, например, что книга начинается с двух ненумерованных
-титульных страниц, после чего следуют 32 страницы, пронумерованных
-римскими цифрами, а далее идет арабская нумерация, которая, однако,
-начинается сразу с 33. В таком случае целесообразно задать следующий
-аргумент для параметра <tt>--labels</tt>:</p>
+<p>Suppose for example that a book starts from two unnumbered title pages
+followed by 32 pages numbered with roman digits. Then goes an arabic
+pagination, which, however, starts straight from 33. So the following argument
+for the <tt>--labels</tt> option would be appropriate:</p>
 
 <pre>
 "0:Title %D;2:%R;34:%33D"
@@ -463,38 +464,39 @@ ignored.</p>
 
 <h3>Building table of contents</h3>
 
-<p>pdfbeads предусматривает возможность добавить оглавление к создаваемому
-PDF-файлу. Для этого используется параметр <tt>-C</tt> (или <tt>--toc</tt>),
-принимающий в качестве аргумента путь к текстовому файлу.</p>
+<p>pdfbeads allows to add table of contents (PDF bookmarks) to the PDF file
+to be generated. This is done with the <tt>-C</tt> (or <tt>--toc</tt>) option,
+which accepts as an argument a path to a text file.</p>
 
-<p>Файл оглавления должен иметь кодировку UTF-8 и состоять из строк, оформленных
-по следующему образцу (строки, начинающиеся с символа `#', игнорируются):</p>
+<p>The TOC file should be UTF-8 encoded and consist of lines formatted
+as follows (lines beginning from the `#' character are considered comments
+and ignored):</p>
 
 <pre>
-&lt;отступ&gt;"Заголовок" "Номер страницы" [0|-|1|+]
+&lt;indent&gt;"Heading" "Page number" [0|-|1|+]
 </pre>
 
-<p>Уровень вложенности заголовка определяется его отступом (последний может
-состоять из пробелов или табуляторов, но одновременное использование тех и
-других в пределах одного файла не допускается). После отступа идут поля
-заголовка и номера страницы, которые разделяются любым числом пробельных
-символов и при необходимости заключаются в кавычки. Последний, необязательный
-параметр указывает, должен ли данный пункт оглавления отображаться
-развернутым по умолчанию (символы `+' и `1' означают «да»).</p>
+<p>The heading level is determined by its indent (which may be formed either
+from spaces or from tabs, but mixing both styles inside the same file is not
+allowed). The indent is followed by the fields of heading and page number,
+which are separated with any number of space characters and may be enclosed
+into double quotation marks if mecessary. The last optional parameter
+specifies, if this TOC entry should be displayed unfolded by default (the
+characters `+' and `1' mean “yes”).</p>
 
-<p>Ключ <tt>--toc</tt> целесообразно использовать в сочетании с ключом
-<tt>--labels</tt>. В этом случае в файле оглавления можно использовать
-те же номера страниц, что и в бумажной книге, не задумываясь о сдвигах
-нумерации.</p>
+<p>It is a good idea to use the <tt>--toc</tt> option together with
+<tt>--labels</tt>. Thus it is possible to use in the TOC file the same
+page numbers as in the paper book without taking care about any shifts
+of the numbering.</p>
 
 <h3>Adding text layer</h3>
 
-<p>pdfbeads позволяет создавать документы PDF со скрытым текстовым
-слоем. Последний может быть либо получен из файлов в формате
+<p>It is possible with pdfbeads to create PDF files with a hidden text
+layer. The text for a hidden layer may be either obtained from
 <a href="http://docs.google.com/View?docid=dfxcv4vc_67g844kf">hOCR</a>
-(расширение языка HTML, позволяющее сохранять в документе информацию
-о положении символов и элементов разметки текста на странице), либо
-импортирован из другого PDF-файла.</p>
+files (hOCR is a HTML language extension, allowing to store information
+about exact positioning of characters and markup elements on the page) or
+imported from another PDF file.</p>
 
 <p>Для создания файлов в формате hOCR необходимо воспользоваться программой
 оптического распознавания символов, поддерживающей этот формат, например
@@ -505,7 +507,7 @@ PDF-файлу. Для этого используется параметр <tt>
 соответствовать отдельный файл с тем же базовым именем, что и у исходного
 изображения, при расширении HTM(L) или HOCR. Обработка файлов hOCR
 осуществляется автоматически при условии, что интерпретатору Ruby доступно
-расширение Hpricot.</p>
+расширение Nokogiri.</p>
 
 <p>Иное возможное решение заключается в том, чтобы импортировать текстовый
 слой из другого PDF-файла (естественно, последний должен быть получен путем
